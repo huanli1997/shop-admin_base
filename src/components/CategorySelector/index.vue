@@ -1,109 +1,122 @@
 <template>
-  <el-form inline>
-    <!-- 
-      {
-        "id": 1,
-        "name": "图书、音像、电子书刊"
-      },
-      -->
+  <el-form :inline="true" :model="form" class="demo-form-inline">
     <el-form-item label="一级分类">
-      <el-select placeholder="请选择" v-model="category1Id" @change="handleCategory1Change" 
-        :disabled="disabled">
-        <el-option :label="c1.name" :value="c1.id" v-for="c1 in category1List" :key="c1.id"/>
+      <!-- 显示二级分类的数据  它需要在选择一级分类列表的时候（change）去发请求获取数据 -->
+      <el-select
+        v-model="form.category1Id"
+        placeholder="请选择分类"
+        @change="handlerCategory1"
+      >
+        <!-- v-model自动收集的是value的值 -->
+        <el-option
+          :label="c1.name"
+          :value="c1.id"
+          v-for="c1 in category1List"
+          :key="c1.id"
+        ></el-option>
       </el-select>
     </el-form-item>
-    <el-form-item label="二级分类" >
-       <el-select placeholder="请选择" v-model="category2Id" @change="handleCategory2Change"
-        :disabled="disabled">
-        <el-option :label="c2.name" :value="c2.id" v-for="c2 in category2List" :key="c2.id"/>
+    <el-form-item label="二级分类">
+      <el-select
+        v-model="form.category2Id"
+        placeholder="请选择分类"
+        @change="handlerCategory2"
+      >
+        <el-option
+          :label="c2.name"
+          :value="c2.id"
+          v-for="c2 in category2List"
+          :key="c2.id"
+        ></el-option>
       </el-select>
     </el-form-item>
     <el-form-item label="三级分类">
-       <el-select placeholder="请选择" v-model="category3Id" @change="handleCategory3Change"
-        :disabled="disabled">
-        <el-option :label="c3.name" :value="c3.id" v-for="c3 in category3List" :key="c3.id"/>
+      <el-select
+        v-model="form.category3Id"
+        placeholder="请选择分类"
+        @change="handlerCategory3"
+      >
+        <el-option
+          :label="c3.name"
+          :value="c3.id"
+          v-for="c3 in category3List"
+          :key="c3.id"
+        ></el-option>
       </el-select>
     </el-form-item>
   </el-form>
 </template>
 
 <script>
+import { methods } from "v-charts/lib/core";
 export default {
-  name: 'CategorySelector',
-
-  data () {
+  name: "CategorySelector",
+  data() {
     return {
-      category1List: [], // 一级分类列表
-      category2List: [], // 二级分类列表
-      category3List: [], // 三级分类列表
-      category1Id: '', // 选择的一级分类id
-      category2Id: '', // 选择的二级分类id
-      category3Id: '', // 选择的三级分类id
-      disabled: false, // 是否禁用select
-    }
+      form: {
+        category1Id: "",
+        category2Id: "",
+        category3Id: ""
+      },
+      category1List: {},
+      category2List: {},
+      category3List: {}
+    };
   },
-
-  mounted () {
-    // 异步获取一级分类列表显示
-    this.getCategory1List()
+  mounted() {
+    // 获取一级分类列表
+    this.getCategorys1();
   },
-
   methods: {
-    /* 
-    异步获取一级分类列表显示
-    */
-    async getCategory1List () {
-      const result = await this.$API.category.getCategorys1()
-      const category1List = result.data
-      this.category1List = category1List
+    // 查找一级分类列表
+    async getCategorys1() {
+      const result = await this.$API.category.getCategorys1();
+      if (result.code === 200) {
+        this.category1List = result.data;
+      }
     },
 
-    /* 
-    什么时候分发: change事件回调中
-		事件名: categoryChange
-		携带的数据: 分类Id和分类级别(1/2/3)   {categoryId: 12, level: 1/2/3}
-    */
+    // 查找二级分类列表
+    async handlerCategory1(category1Id) {
+      /*
+        先正常选择一遍，然后再去选中2级的时候，三级不变  （需要去重置三级列表的数据和选中的id数据）
+        同理：重新选择1级的时候，2级和3级的数据也得重置
+        在发请求前得加上
+      */
+      // 重置二、三级数据
+      this.form.category2Id = "";
+      this.form.category3Id = "";
+      this.category2List = {};
+      this.category3List = {};
 
-    /* 
-    选中的一级分类ID发生变化的事件回调
-    */
-    async handleCategory1Change (category1Id) {
+      const result = await this.$API.category.getCategorys2(category1Id);
+      if (result.code === 200) {
+        this.category2List = result.data;
+      }
 
-      // 分发分类ID发生改变的事件
-      this.$emit('categoryChange', {categoryId: category1Id, level: 1})
-
-      // 重置二/三分类数据
-      this.category2List = []
-      this.category2Id = ''
-      this.category3List = []
-      this.category3Id = ''
-
-      // 请求获取二级分类列表显示
-      const result = await this.$API.category.getCategorys2(category1Id)
-      this.category2List = result.data
+      // 选择任意的分类，需要给父组件通信发请求获取attr数据
+      this.$emit("changeCategory", { categoryId: category1Id, level: 1 });
     },
-    /* 
-    选中的二级分类ID发生变化的事件回调
-    */
-    async handleCategory2Change (category2Id) {
-      // 分发分类ID发生改变的事件
-      this.$emit('categoryChange', {categoryId: category2Id, level: 2})
 
-      // 重置三分类数据
-      this.category3List = []
-      this.category3Id = ''
+    // 查找三级分类列表
+    async handlerCategory2(category2Id) {
+      // 重置三级数据
+      this.form.category3Id = "";
+      this.category3List = {};
 
-      // 请求获取三级分类列表显示
-      const result = await this.$API.category.getCategorys3(category2Id)
-      this.category3List = result.data
+      const result = await this.$API.category.getCategorys3(category2Id);
+      if (result.code === 200) {
+        this.category3List = result.data;
+      }
+
+      this.$emit("changeCategory", { categoryId: category2Id, level: 2 });
     },
-    /* 
-    选中的三级分类ID发生变化的事件回调
-    */
-    handleCategory3Change (category3Id) {
-      // 分发分类ID发生改变的事件
-      this.$emit('categoryChange', {categoryId: category3Id, level: 3})
-    },
+
+    handlerCategory3(category3Id) {
+      //通知父组件请求attr列表数据
+      // 选择任意的分类，需要给父组件通信发请求获取attr数据
+      this.$emit("changeCategory", { categoryId: category3Id, level: 3 });
+    }
   }
-}
+};
 </script>

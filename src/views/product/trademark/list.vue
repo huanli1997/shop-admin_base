@@ -51,11 +51,13 @@
       :title="`${form.id ? '修改' : '添加'}品牌`"
       :visible.sync="isShowDialog"
     >
-      <el-form :model="form" style="width:80%">
-        <el-form-item label="品牌名称" :label-width="`100px`">
+      <!-- rules 添加验证 -->
+      <el-form ref="form" :model="form" style="width:80%" :rules="rules">
+        <!-- Form-Item 的 prop 属性设置为需校验的字段名 -->
+        <el-form-item label="品牌名称" :label-width="`100px`" prop="tmName">
           <el-input v-model="form.tmName" autocomplete="off"></el-input>
         </el-form-item>
-        <el-form-item label="品牌LOGO" :label-width="`100px`">
+        <el-form-item label="品牌LOGO" :label-width="`100px`" prop="logoUrl">
           <!-- 上传 -->
           <!-- action：上传地址  /admin/product/fileUpload -->
           <el-upload
@@ -94,6 +96,26 @@ export default {
       form: {
         logoUrl: "", // 品牌图片
         tmName: "" // 品牌名
+      },
+      rules: {
+        tmName: [
+          //trigger：什么时候触发   blur：失去焦点  change :改变
+          { required: true, message: "请输入品牌名称", trigger: "blur" },
+          // {
+          //   min: 2,
+          //   max: 10,
+          //   message: "长度在 2 到 10 个字符",
+          //   trigger: "change"
+          // }
+
+          // 自定义验证
+          { validator: this.validateTmName, trigger: "change" }
+        ],
+        // 因为LOGO是图片，不是input标签，所以不会触发change和blur：失去焦点
+        // 但是整体验证的时候，可以验证到
+        logoUrl: [
+          { required: true, message: "请选择品牌LOGO", trigger: "change" }
+        ]
       }
     };
   },
@@ -155,31 +177,44 @@ export default {
     },
 
     // 图片上传完成后，点击确定，取出数据发送请求到后台，添加品牌
-    async save() {
-      // 1. 获取参数
-      let trademark = this.form;
-      // console.log(trademark);
-      try {
-        const result = await this.$API.trademark.addOrUpdate(trademark);
-        if (result.code === 200) {
-          // 2.成功
-          // 关闭dialog
-          this.isShowDialog = false;
-          // 重新发请求，获取列表数据
-          // this.getTrademarkList();
-          // 判断当时是修改/添加，修改->当前页，添加->1 页
-          this.getTrademarkList(trademark.id ? this.page : 1);
+    save() {
+      // 先针对表单进行验证
+      this.$refs.form.validate(async valid => {
+        if (valid) {
+          // 全部验证通过
 
-          // 弹出提示
-          this.$message.success(`${this.form.id ? "修改" : "添加"}品牌成功`);
+          // 1. 获取参数
+          let trademark = this.form;
+          // console.log(trademark);
+          try {
+            const result = await this.$API.trademark.addOrUpdate(trademark);
+            if (result.code === 200) {
+              // 2.成功
+              // 关闭dialog
+              this.isShowDialog = false;
+              // 重新发请求，获取列表数据
+              // this.getTrademarkList();
+              // 判断当时是修改/添加，修改->当前页，添加->1 页
+              this.getTrademarkList(trademark.id ? this.page : 1);
+
+              // 弹出提示
+              this.$message.success(
+                `${this.form.id ? "修改" : "添加"}品牌成功`
+              );
+            } else {
+              // 3.失败
+              // 弹出提示
+              this.$message.warning(
+                `${this.form.id ? "修改" : "添加"}品牌失败`
+              );
+            }
+          } catch (error) {
+            this.$message.error("请求发送失败：" + error.message);
+          }
         } else {
-          // 3.失败
-          // 弹出提示
-          this.$message.warning(`${this.form.id ? "修改" : "添加"}品牌失败`);
+          return false;
         }
-      } catch (error) {
-        this.$message.error("请求发送失败：" + error.message);
-      }
+      });
     },
 
     // 修改品牌
@@ -223,6 +258,18 @@ export default {
           // 点击 取消按钮 逻辑
           this.$message.warning("已取消删除");
         });
+    },
+
+    // 自定义验证规则
+    validateTmName: (rule, value, callback) => {
+      // value 真正验证的值
+      if (value.length < 2 || value.length > 10) {
+        // callback() 带参数，表示验证失败
+        callback(new Error("长度在 2 到 10 个字符"));
+      } else {
+        // callback() 不带参数，表示验证成功
+        callback();
+      }
     }
   }
 };
