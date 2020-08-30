@@ -1,5 +1,6 @@
 <template>
-  <el-form :inline="true" :model="form" class="demo-form-inline">
+<!-- 三级分类列表的form disbled属性是根据isShowList来改变的，刚好是isShowList取反 -->
+  <el-form :inline="true" :model="form" class="demo-form-inline" :disabled="!isShowList">
     <el-form-item label="一级分类">
       <!-- 显示二级分类的数据  它需要在选择一级分类列表的时候（change）去发请求获取数据 -->
       <el-select
@@ -48,7 +49,6 @@
 </template>
 
 <script>
-import { methods } from "v-charts/lib/core";
 export default {
   name: "CategorySelector",
   data() {
@@ -63,6 +63,7 @@ export default {
       category3List: {}
     };
   },
+  props:['isShowList'],
   mounted() {
     // 获取一级分类列表
     this.getCategorys1();
