@@ -84,7 +84,11 @@
         @update:visible="isShowSpuForm = $event"
       ></SpuForm> -->
       <!-- 简单写法 -->
-      <SpuForm v-show="isShowSpuForm" :visible.sync="isShowSpuForm"></SpuForm>
+      <SpuForm
+        v-show="isShowSpuForm"
+        :visible.sync="isShowSpuForm"
+        ref="spu"
+      ></SpuForm>
 
       <SkuForm v-show="isShowSkuForm"></SkuForm>
     </el-card>
@@ -158,6 +162,8 @@ export default {
     // 添加spu
     showAddSpuForm() {
       this.isShowSpuForm = true;
+      // 父组件当中点击按钮显示的时候发请求
+      this.$refs.spu.initAddSpuDate();
     },
 
     // 添加sku
@@ -165,9 +171,11 @@ export default {
       this.isShowSkuForm = true;
     },
 
-    // 修改sku
+    // 修改spu
     showUpdateSpuForm(row) {
-      this.isShowSkuForm = true;
+      this.isShowSpuForm = true;
+      // 父组件当中点击按钮显示的时候发请求
+      this.$refs.spu.initUpdateSpuDate(row);
     }
   }
 };
