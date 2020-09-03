@@ -41,7 +41,7 @@ export default {
   */
   addUpdate(spuInfo) {
     return request.post(
-      `/admin/product/${spuInfo.id ? "updateSpuInfo" : "saveSpuInfo"}`,
+      `/admin/product/${spuInfo.id ? "update" : "save"}SpuInfo`,
       spuInfo
     );
   },

@@ -88,14 +88,13 @@
           <template slot-scope="{ row, $index }">
             <el-tag
               :key="spuSaleAttrValue.id"
-              v-for="spuSaleAttrValue in row.spuSaleAttrValueList"
+              v-for="(spuSaleAttrValue, index) in row.spuSaleAttrValueList"
               closable
               :disable-transitions="false"
+              @close="row.spuSaleAttrValueList.splice(index, 1)"
             >
-              <!-- @close="handleClose(tag)" -->
               {{ spuSaleAttrValue.saleAttrValueName }}
             </el-tag>
-
             <!-- 失去焦点或者回车的时候，我们需要保存这个输入的属性值名称 -->
             <el-input
               class="input-new-tag"
@@ -116,20 +115,34 @@
             >
           </template>
         </el-table-column>
-        <el-table-column prop="prop" label="操作" width="150"></el-table-column>
+        <el-table-column prop="prop" label="操作" width="150">
+          <template slot-scope="{ row, $index }">
+            <el-popconfirm
+              title="你确认删除该销售属性吗？"
+              @onConfirm="spuInfo.spuSaleAttrList.splice($index, 1)"
+            >
+              <!-- slot="reference" 触发 Popconfirm 显示的 HTML 元素 -->
+              <HintButton
+                slot="reference"
+                type="danger"
+                icon="el-icon-delete"
+                title="删除销售属性"
+                size="mini"
+              ></HintButton>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
       </el-table>
     </el-form-item>
 
     <el-form-item>
-      <el-button type="primary">保存</el-button>
-      <el-button @click="$emit('update:visible', false)">取消</el-button>
+      <el-button type="primary" @click="save">保存</el-button>
+      <el-button @click="cancel">取消</el-button>
     </el-form-item>
   </el-form>
 </template>
 
 <script>
-import { computed } from "v-charts/lib/core";
-import { Tag } from "element-ui";
 export default {
   name: "SpuForm",
   props: ["visible"],
@@ -148,13 +161,30 @@ export default {
       spuImageList: [], // 根据spu id获取spu的图片列表
       trademarkList: [], // 所有品牌列表
       baseSaleAttrList: [], // 销售属性列表
-      fileList: [],
       // attrId: "", // 暂时这样写，目前也不确定是不是需要收集的是这个名字
       attrIdattrName: "", // 实际是收集 unUsedSaleAttr.id 和unUsedSaleAttr.name 作为 spu 销售属性的baseSaleAttrId和saleAttrName
       imgList: [] // 收集的图片列表（点击删除后，剩下的图片列表）
     };
   },
   methods: {
+    //清空data数据
+    resetData() {
+      this.dialogImageUrl = "";
+      this.dialogVisible = false;
+      this.spu = "";
+      this.attrIdattrName = "";
+      this.spuInfo = {
+        spuName: "",
+        tmId: "",
+        description: "",
+        spuSaleAttrList: []
+      };
+      this.spuImageList = []; //获取到的图片列表
+      this.trademarkList = [];
+      this.baseSaleAttrList = [];
+      this.imgList = []; //收集的图片列表
+    },
+
     // 图片被删除时候调用
     // file：你删除的那个图片对象
     // fileList：剩下的图片对象数组
@@ -180,6 +210,8 @@ export default {
     initUpdateSpuDate(spu) {
       // 保存父组件传过来的spu
       this.spu = spu;
+      // category3Id需要从父组件传递过去添加到spuInfo当中
+      this.spuInfo.category3Id = spu.category3Id;
       //http://localhost:9529/dev-api/admin/product/getSpuById/1122  获取对应id的spu详情
       this.getSpuInfo(spu.id);
 
@@ -194,7 +226,8 @@ export default {
     },
 
     //点击父组件当中的添加按钮，父组件需要调用这个函数让子组件发请求获取初始化展示的数据
-    initAddSpuDate() {
+    initAddSpuDate(category3Id) {
+      this.spuInfo.category3Id = category3Id;
       //http://localhost:9529/dev-api/admin/product/baseTrademark/getTrademarkList 获取所有的品牌列表
       this.getTrademarkList();
 
@@ -296,12 +329,13 @@ upload要求必须要有name和url
         spuId
       };
 
+      console.log(saleAttrValueName);
+
       //添加之前要判断
       //判断 1 属性值是不是为空
       if (saleAttrValueName === undefined || saleAttrValueName.trim() === "") {
         // 清空属性值
         row.isEdit = false;
-        row.saleAttrValueName = "";
         return;
       }
 
@@ -311,7 +345,7 @@ upload要求必须要有name和url
       });
       if (repeat) {
         this.$message.warning("属性值不能重复");
-        // 清空属性值
+        // 改变为查看模式
         row.isEdit = false;
         row.saleAttrValueName = "";
         return;
@@ -325,6 +359,91 @@ upload要求必须要有name和url
 
       //5\ 将input清空
       row.saleAttrValueName = "";
+    },
+
+    // {
+    //   "category3Id": 0,
+    //   "description": "string",
+
+    //   "spuName": "string",
+    //   "spuSaleAttrList": [
+    //     {
+    //       "baseSaleAttrId": 0,
+    //       "id": 0,
+    //       "saleAttrName": "string",
+    //       "spuId": 0,
+    //       "spuSaleAttrValueList": [
+    //         {
+    //           "baseSaleAttrId": 0,
+    //           "id": 0,
+    //           "isChecked": "string",
+    //           "saleAttrName": "string",
+    //           "saleAttrValueName": "string",
+    //           "spuId": 0
+    //         }
+    //       ]
+    //     }
+    //   ],
+    //   "tmId": 0
+    // }
+    // 保存
+    async save() {
+      // 1、收集数据
+      let { spu, spuInfo, imgList } = this;
+      let spuId = spu.id;
+      // 2、图片列表需要整理格式，需要把外面的图片列表数据整理然后放入spuinfo当中
+      //   "spuImageList": [
+      //     {
+      //       "imgName": "string",
+      //       "imgUrl": "string",
+      //       "spuId": 0
+      //     }
+      //   ],
+      imgList = imgList.map(item => {
+        return {
+          imgName: item.imgName || item.name,
+          imgUrl: item.imgUrl || item.url,
+          spuId: spuId
+        };
+      });
+
+      spuInfo.spuImageList = imgList;
+
+      // 3、自己添加的一些参数需要去除
+      spuInfo.spuSaleAttrList.forEach(item => {
+        delete item.isEdit;
+        delete item.saleAttrValueName;
+      });
+
+      // 发送请求保存数据
+      console.log(spuInfo);
+      const result = await this.$API.spu.addUpdate(spuInfo);
+      console.log(result);
+      if (result.code === 200) {
+        //成功干啥
+        this.$message.success("保存spu成功");
+        // 通知父组件，保存成功了，父组件重新刷新页数
+        // 返回到列表页
+        // 到了列表页之后要干啥
+        // 是怎么到的列表页（添加还是修改）
+        this.$emit("saveSuccess");
+        //关闭添加和修改spu的页面
+        this.$emit("update:visible", false);
+      } else {
+        // 失败
+        this.$message.error("保存spu失败");
+      }
+
+      //清空当前的data数据
+      this.resetData();
+    },
+
+    // 取消
+    cancel() {
+      // 通知父组件，取消了
+      this.$emit("cancelBack");
+      //清空当前的data数据
+      this.resetData();
     }
   },
 

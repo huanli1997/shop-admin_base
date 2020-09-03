@@ -57,6 +57,7 @@
                   icon="el-icon-delete"
                   title="删除SPU"
                   size="mini"
+                  @click="deleteSpu(row)"
                 ></HintButton>
               </el-popconfirm>
             </template>
@@ -88,6 +89,8 @@
         v-show="isShowSpuForm"
         :visible.sync="isShowSpuForm"
         ref="spu"
+        @saveSuccess="saveSuccess"
+        @cancelBack="cancelBack"
       ></SpuForm>
 
       <SkuForm v-show="isShowSkuForm"></SkuForm>
@@ -163,19 +166,55 @@ export default {
     showAddSpuForm() {
       this.isShowSpuForm = true;
       // 父组件当中点击按钮显示的时候发请求
-      this.$refs.spu.initAddSpuDate();
+      // //最后切记把category3Id
+      this.$refs.spu.initAddSpuDate(this.category3Id);
     },
 
     // 添加sku
-    showAddSkuForm() {
+    showAddSkuForm(row) {
       this.isShowSkuForm = true;
     },
 
     // 修改spu
     showUpdateSpuForm(row) {
+      //最后为了判断是添加成功回来还是修改成功回来所添加的判断依据
+      this.spuId = row.id;
       this.isShowSpuForm = true;
       // 父组件当中点击按钮显示的时候发请求
       this.$refs.spu.initUpdateSpuDate(row);
+    },
+
+    // 删除spu
+    deleteSpu(row) {},
+
+    // spu 保存成功的操作
+    saveSuccess() {
+      // 判断是添加保存回来的还是修改 利用spuId
+      if (this.spuId) {
+        //修改回来的 重新获取当前页面的列表数据
+        this.getSpuList(this.page);
+      } else {
+        // 添加回来的 重新获取第一页列表数据
+        this.getSpuList();
+      }
+      //添加成功或者修改成功保存ok后把判断标识置为null，后期如果重新点击从新开始
+      this.spuId = null;
+    },
+
+    // spu 详情页取消的操作
+    cancelBack() {
+      // 关闭SpuForm详情页面
+      this.isShowSpuForm = false;
+      // 判断是添加保存回来的还是修改 利用spuId
+      if (this.spuId) {
+        //修改回来的 重新获取当前页面的列表数据
+        this.getSpuList(this.page);
+      } else {
+        // 添加回来的 重新获取第一页列表数据
+        this.getSpuList();
+      }
+      // 重置 spuId 标志位
+      this.spuId = null;
     }
   }
 };
