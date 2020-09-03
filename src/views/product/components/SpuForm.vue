@@ -416,9 +416,7 @@ upload要求必须要有name和url
       });
 
       // 发送请求保存数据
-      console.log(spuInfo);
       const result = await this.$API.spu.addUpdate(spuInfo);
-      console.log(result);
       if (result.code === 200) {
         //成功干啥
         this.$message.success("保存spu成功");

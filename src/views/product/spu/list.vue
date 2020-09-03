@@ -49,15 +49,18 @@
                 icon="el-icon-info"
                 title="查看SPU的所有SKU"
                 size="mini"
+                @click="showDialog(row)"
               ></HintButton>
-              <el-popconfirm title="你确认删除该属性吗？">
+              <el-popconfirm
+                title="你确认删除该属性吗？"
+                @onConfirm="deleteSpu(row)"
+              >
                 <HintButton
                   slot="reference"
                   type="danger"
                   icon="el-icon-delete"
                   title="删除SPU"
                   size="mini"
-                  @click="deleteSpu(row)"
                 ></HintButton>
               </el-popconfirm>
             </template>
@@ -95,6 +98,25 @@
 
       <SkuForm v-show="isShowSkuForm"></SkuForm>
     </el-card>
+
+    <!-- 显示spu下所有sku的列表  -->
+    <el-dialog title="sku的列表" :visible.sync="isShowDialog">
+      <!-- v-loading="loading" 加载的圈圈 -->
+      <el-table
+        v-loading="loading"
+        :data="skuList"
+        :before-close="handleBeforeClose"
+      >
+        <el-table-column prop="skuName" label="名称"></el-table-column>
+        <el-table-column prop="price" label="价格（元）"></el-table-column>
+        <el-table-column prop="weight" label="重量（KG）"></el-table-column>
+        <el-table-column label="默认图片">
+          <template slot-scope="{ row, $index }">
+            <img :src="row.skuDefaultImg" alt="" style="width:100px" />
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -116,7 +138,12 @@ export default {
       total: 0,
       //这两个数据是正儿八经的控制三个页面的切换
       isShowSkuForm: false,
-      isShowSpuForm: false
+      isShowSpuForm: false,
+      // sku 列表是否显示
+      isShowDialog: false,
+      // sku 列表
+      skuList: [],
+      loading: true // 加载
     };
   },
   components: {
@@ -184,9 +211,6 @@ export default {
       this.$refs.spu.initUpdateSpuDate(row);
     },
 
-    // 删除spu
-    deleteSpu(row) {},
-
     // spu 保存成功的操作
     saveSuccess() {
       // 判断是添加保存回来的还是修改 利用spuId
@@ -215,6 +239,35 @@ export default {
       }
       // 重置 spuId 标志位
       this.spuId = null;
+    },
+
+    // 查看sku列表
+    async showDialog(row) {
+      this.isShowDialog = true;
+      // 发送请求获取数据
+      const result = await this.$API.sku.getListBySpuId(row.id);
+      this.skuList = result.data;
+      // 请求收到之后，加载置为false
+      this.loading = false;
+    },
+
+    // 关闭查看sku列表的回调
+    handleBeforeClose() {
+      this.isShowDialog = false;
+      this.skuList = [];
+      this.loading = true;
+    },
+
+    // 删除spu
+    async deleteSpu(row) {
+      const result = await this.$API.spu.remove(row.id);
+      if (result.code === 200) {
+        this.$message.success("删除spu成功");
+        // 重新获取列表
+        this.getSpuList(this.spuList.length > 1 ? this.page : this.page - 1);
+      } else {
+        this.$message.error("删除spu失败");
+      }
     }
   }
 };
