@@ -96,7 +96,11 @@
         @cancelBack="cancelBack"
       ></SpuForm>
 
-      <SkuForm v-show="isShowSkuForm"></SkuForm>
+      <SkuForm
+        v-show="isShowSkuForm"
+        :visible.sync="isShowSkuForm"
+        ref="sku"
+      ></SkuForm>
     </el-card>
 
     <!-- 显示spu下所有sku的列表  -->
@@ -150,6 +154,17 @@ export default {
     SpuForm,
     SkuForm
   },
+
+  watch: {
+    // 控制三级分类列表的可操作性
+    isShowSkuForm(val) {
+      this.isShowList = !val;
+    },
+    isShowSpuForm(val) {
+      this.isShowList = !val;
+    }
+  },
+
   methods: {
     // 获取getAttrList请求参数
     changeCategory({ categoryId, level }) {
@@ -193,13 +208,16 @@ export default {
     showAddSpuForm() {
       this.isShowSpuForm = true;
       // 父组件当中点击按钮显示的时候发请求
-      // //最后切记把category3Id
+      //最后切记把category3Id
       this.$refs.spu.initAddSpuDate(this.category3Id);
     },
 
     // 添加sku
     showAddSkuForm(row) {
       this.isShowSkuForm = true;
+      // 发请求获取初始化数据
+      // category1Id 和 category2Id 是为了在子组件发请求需要的
+      this.$refs.sku.initAddSkuDate(row, this.category1Id, this.category2Id);
     },
 
     // 修改spu
